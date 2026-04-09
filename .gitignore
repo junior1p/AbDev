@@ -1,0 +1,40 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+*.whl
+
+# AbDev outputs
+abdev_results/
+abdev_api_results/
+abdev_results_*/
+therasabdab_cache.csv
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+*.ipynb_checkpoints/
+
+# Scorecard images (large)
+*.png
+
+# Flask
+instance/
+.flaskenv
+abdev_output/
