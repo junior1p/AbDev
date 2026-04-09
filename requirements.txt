@@ -1,0 +1,16 @@
+# AbDev dependencies
+abnumber>=0.4.4
+pandas>=1.5
+numpy>=1.24
+matplotlib>=3.7
+requests>=2.28
+scipy>=1.10
+biopython>=1.81
+
+# API server
+flask>=2.3
+gunicorn>=21.0
+
+# For conda-based installation (alternative):
+# conda install -c bioconda hmmer -y
+# pip install abnumber pandas numpy matplotlib requests scipy biopython
