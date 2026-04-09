@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AbDev — Antibody Developability Prediction</title>
+<meta name="description" content="AI-powered antibody developability assessment: TAP scoring, liability detection, and benchmark comparison for therapeutic antibody engineering.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-deep:#F7F9FC;
+  --bg-surface:#EEF2F8;
+  --bg-card:#fff;
+  --text-primary:#0F1923;
+  --text-secondary:#4A5568;
+  --text-dim:#94A3B8;
+  --accent:#1B6CA8;
+  --accent-bright:#0D4F8A;
+  --accent-glow:rgba(27,108,168,.07);
+  --accent-light:#D6E8F7;
+  --accent-2:#2DAD7C;
+  --accent-2-light:#D1F5E9;
+  --accent-warn:#E88C30;
+  --accent-danger:#D95555;
+  --serif:'Instrument Serif',Georgia,serif;
+  --sans:'DM Sans',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --max-w:780px;
+  --wide-w:1080px;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.03);
+  --shadow-md:0 4px 16px rgba(27,108,168,.06),0 2px 6px rgba(0,0,0,.04);
+  --shadow-lg:0 12px 40px rgba(27,108,168,.08),0 4px 12px rgba(0,0,0,.04);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:17px;scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{background:var(--bg-deep);color:var(--text-primary);font-family:var(--sans);line-height:1.72;font-weight:370;overflow-x:hidden}
+::selection{background:#D6E8F7;color:#0D4F8A}
+
+/* Scroll progress bar */
+.scroll-progress{position:fixed;top:0;left:0;width:0%;height:3px;background:linear-gradient(90deg,#1B6CA8,#2DAD7C,#E88C30,#1B6CA8);background-size:200% 100%;animation:shimmerBar 3s ease infinite;z-index:9999}
+@keyframes shimmerBar{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+/* Navigation */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:.8rem clamp(1.5rem,5vw,3rem);display:flex;align-items:center;justify-content:space-between;background:rgba(247,249,252,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(27,108,168,.06);transition:all .3s}
+nav .nav-brand{font-family:var(--mono);font-size:.8rem;font-weight:500;color:var(--accent);text-decoration:none;letter-spacing:.05em}
+nav .nav-links{display:flex;gap:2rem;list-style:none}
+nav .nav-links a{font-size:.82rem;color:var(--text-secondary);text-decoration:none;font-weight:400;transition:color .2s}
+nav .nav-links a:hover{color:var(--accent)}
+@media(max-width:600px){nav .nav-links{display:none}}
+
+/* ═══ HERO ═══ */
+.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;padding:0 clamp(1.5rem,5vw,4rem) 5rem;overflow:hidden;background:#fff}
+.hero::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(ellipse 80% 60% at 75% 10%,rgba(27,108,168,.08) 0%,transparent 60%),
+  radial-gradient(ellipse 50% 50% at 10% 80%,rgba(45,173,124,.08) 0%,transparent 55%),
+  radial-gradient(ellipse 40% 40% at 90% 85%,rgba(232,140,48,.06) 0%,transparent 50%);
+  z-index:0}
+.hero-grid{position:absolute;inset:0;
+  background-image:radial-gradient(circle,rgba(27,108,168,.05) 1px,transparent 1px);
+  background-size:32px 32px;
+  mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,black 10%,transparent 70%);
+  -webkit-mask-image:radial-gradient(ellipse 80% 70% at 50% 40%,black 10%,transparent 70%);
+  z-index:0}
+.hero-content{position:relative;z-index:1;max-width:var(--wide-w);margin:0 auto;width:100%}
+.hero-label{font-family:var(--mono);font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:1.8rem;opacity:0;animation:fadeUp .8s ease-out .2s forwards}
+.hero-title{font-family:var(--serif);font-size:clamp(2.8rem,6.5vw,5.5rem);line-height:1.06;font-weight:400;color:var(--text-primary);max-width:16ch;margin-bottom:1.8rem;opacity:0;animation:fadeUp .9s ease-out .35s forwards}
+.hero-title em{font-style:italic;color:var(--accent)}
+.hero-sub{font-size:1.1rem;color:var(--text-secondary);max-width:56ch;line-height:1.68;margin-bottom:2.5rem;opacity:0;animation:fadeUp .9s ease-out .5s forwards}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(18px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* Stats row */
+.hero-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1.5rem;max-width:640px;opacity:0;animation:fadeUp .9s ease-out .8s forwards}
+.stat-card{background:var(--bg-surface);border-radius:12px;padding:1.2rem 1.4rem;border:1px solid rgba(27,108,168,.07)}
+.stat-card .stat-num{font-family:var(--serif);font-size:1.9rem;font-weight:400;color:var(--accent);line-height:1}
+.stat-card .stat-num.green{color:var(--accent-2)}
+.stat-card .stat-num.orange{color:var(--accent-warn)}
+.stat-card .stat-label{font-size:.78rem;color:var(--text-dim);margin-top:.4rem;font-family:var(--mono);letter-spacing:.03em}
+
+/* ═══ FORM SECTION ═══ */
+.input-section{background:var(--bg-card);border-top:1px solid rgba(27,108,168,.06);padding:5rem clamp(1.5rem,5vw,4rem)}
+.input-inner{max-width:var(--max-w);margin:0 auto}
+.form-card{background:var(--bg-deep);border-radius:16px;padding:2.5rem;border:1px solid rgba(27,108,168,.08);box-shadow:var(--shadow-md)}
+.form-group{margin-bottom:1.5rem}
+.form-group label{display:block;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary);margin-bottom:.6rem}
+.form-group input,.form-group textarea{width:100%;padding:.85rem 1.1rem;background:var(--bg-card);border:1px solid rgba(27,108,168,.15);border-radius:10px;font-family:var(--sans);font-size:.9rem;color:var(--text-primary);transition:border-color .2s,box-shadow .2s;outline:none}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.form-group input::placeholder,.form-group textarea::placeholder{color:var(--text-dim)}
+.form-group textarea{resize:vertical;min-height:120px;font-family:var(--mono);font-size:.82rem;line-height:1.6}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.5rem;border-radius:8px;font-family:var(--sans);font-size:.88rem;font-weight:500;text-decoration:none;transition:all .25s ease;cursor:pointer;border:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-bright);transform:translateY(-2px);box-shadow:0 8px 28px rgba(27,108,168,.25)}
+.btn-primary:disabled{background:var(--text-dim);cursor:not-allowed;transform:none;box-shadow:none}
+.btn-secondary{background:rgba(27,108,168,.06);color:var(--text-primary);border:1px solid rgba(27,108,168,.2)}
+.btn-secondary:hover{background:rgba(27,108,168,.11);border-color:rgba(27,108,168,.35);transform:translateY(-1px)}
+.btn-full{width:100%;justify-content:center}
+.form-hint{font-size:.75rem;color:var(--text-dim);margin-top:.5rem}
+
+/* ═══ RESULTS SECTION ═══ */
+.results-section{display:none;padding:5rem clamp(1.5rem,5vw,4rem);max-width:var(--wide-w);margin:0 auto}
+.results-section.visible{display:block}
+.results-header{margin-bottom:2.5rem}
+.results-header h2{font-family:var(--serif);font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.15;font-weight:400;margin-bottom:1rem}
+.results-header p{color:var(--text-secondary);max-width:58ch}
+
+.loading-overlay{display:none;flex-direction:column;align-items:center;justify-content:center;padding:4rem;text-align:center}
+.loading-overlay.visible{display:flex}
+.loading-spinner{width:48px;height:48px;border:3px solid var(--accent-light);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:1.5rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-family:var(--mono);font-size:.82rem;color:var(--text-secondary);letter-spacing:.05em}
+.loading-progress{margin-top:.5rem;font-size:.75rem;color:var(--text-dim)}
+
+/* Score Gauge */
+.score-gauge-wrapper{display:flex;flex-direction:column;align-items:center;margin-bottom:3rem}
+.gauge-container{position:relative;width:220px;height:220px}
+.gauge-svg{transform:rotate(-90deg)}
+.gauge-bg{fill:none;stroke:var(--bg-surface);stroke-width:12}
+.gauge-fill{fill:none;stroke-width:12;stroke-linecap:round;transition:stroke-dashoffset 1.2s ease-out,stroke 0.5s}
+.gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge-score{font-family:var(--serif);font-size:3.5rem;line-height:1;color:var(--text-primary)}
+.gauge-label{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);margin-top:.3rem}
+.gauge-sublabel{font-size:.78rem;color:var(--text-secondary);margin-top:.2rem;text-align:center}
+
+/* TAP Metrics */
+.tap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.2rem;margin-bottom:2.5rem}
+.tap-card{background:var(--bg-card);border-radius:14px;padding:1.5rem;border:1px solid rgba(27,108,168,.08);box-shadow:var(--shadow-sm);transition:transform .2s}
+.tap-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.tap-card .tap-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:1.2rem}
+.tap-card .tap-icon.blue{background:var(--accent-light);color:var(--accent)}
+.tap-card .tap-icon.green{background:var(--accent-2-light);color:var(--accent-2)}
+.tap-card .tap-icon.orange{background:rgba(232,140,48,.12);color:var(--accent-warn)}
+.tap-card .tap-icon.red{background:rgba(217,85,85,.1);color:var(--accent-danger)}
+.tap-card .tap-value{font-family:var(--serif);font-size:1.8rem;color:var(--text-primary);line-height:1}
+.tap-card .tap-value.good{color:var(--accent-2)}
+.tap-card .tap-value.warn{color:var(--accent-warn)}
+.tap-card .tap-value.bad{color:var(--accent-danger)}
+.tap-card .tap-label{font-size:.82rem;color:var(--text-dim);margin-top:.4rem;font-family:var(--mono)}
+.tap-card .tap-desc{font-size:.78rem;color:var(--text-secondary);margin-top:.3rem;line-height:1.5}
+
+/* Tables */
+.table-container{background:var(--bg-card);border-radius:14px;border:1px solid rgba(27,108,168,.08);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:2rem}
+.table-header{padding:1.2rem 1.5rem;border-bottom:1px solid rgba(27,108,168,.06);display:flex;align-items:center;gap:.8rem}
+.table-header h3{font-family:var(--serif);font-size:1.1rem;font-weight:400}
+.table-header .badge{padding:.25rem .6rem;border-radius:20px;font-size:.7rem;font-family:var(--mono);letter-spacing:.05em}
+.badge-green{background:var(--accent-2-light);color:var(--accent-2)}
+.badge-orange{background:rgba(232,140,48,.12);color:var(--accent-warn)}
+.badge-red{background:rgba(217,85,85,.1);color:var(--accent-danger)}
+.badge-blue{background:var(--accent-light);color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+thead th{text-align:left;padding:.8rem 1.2rem;background:var(--bg-surface);border-bottom:2px solid rgba(27,108,168,.1);font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-dim);font-weight:400}
+tbody td{padding:.75rem 1.2rem;border-bottom:1px solid rgba(27,108,168,.04);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(27,108,168,.02)}
+.liability-severity{padding:.2rem .6rem;border-radius:4px;font-size:.72rem;font-family:var(--mono)}
+.liability-severity.high{background:rgba(217,85,85,.1);color:var(--accent-danger)}
+.liability-severity.medium{background:rgba(232,140,48,.12);color:var(--accent-warn)}
+.liability-severity.low{background:var(--accent-2-light);color:var(--accent-2)}
+
+.seq-display{font-family:var(--mono);font-size:.8rem;word-break:break-all;color:var(--text-secondary);max-width:300px}
+
+/* Benchmark */
+.benchmark-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem}
+.benchmark-card{background:var(--bg-card);border-radius:14px;padding:1.5rem;border:1px solid rgba(27,108,168,.08);box-shadow:var(--shadow-sm)}
+.benchmark-card .bench-name{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.6rem}
+.benchmark-card .bench-value{font-family:var(--serif);font-size:2rem;color:var(--accent);line-height:1}
+.benchmark-card .bench-value .unit{font-size:.9rem;color:var(--text-dim);font-family:var(--sans)}
+.benchmark-card .bench-sub{font-size:.78rem;color:var(--text-secondary);margin-top:.4rem}
+.benchmark-card .bench-bar{height:6px;background:var(--bg-surface);border-radius:3px;margin-top:.8rem;overflow:hidden}
+.benchmark-card .bench-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width 1s ease-out}
+
+/* Error */
+.error-message{background:rgba(217,85,85,.06);border:1px solid rgba(217,85,85,.2);border-radius:10px;padding:1rem 1.2rem;margin-top:1rem;font-size:.88rem;color:var(--accent-danger);display:none}
+.error-message.visible{display:block}
+
+/* ═══ HOW IT WORKS ═══ */
+.section{padding:6rem clamp(1.5rem,5vw,4rem);max-width:var(--wide-w);margin:0 auto}
+.section-label{font-family:var(--mono);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;opacity:.8}
+.section-title{font-family:var(--serif);font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.15;font-weight:400;margin-bottom:1.2rem}
+.section-sub{font-size:1rem;color:var(--text-secondary);max-width:58ch;line-height:1.7}
+
+.pipeline{display:flex;flex-direction:column;gap:0;margin-top:2.5rem;position:relative}
+.pipeline-step{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:start}
+.pipeline-step .step-content{background:var(--bg-card);border-radius:14px;padding:1.5rem 1.8rem;border:1px solid rgba(27,108,168,.08);box-shadow:var(--shadow-sm)}
+.pipeline-step .step-num{font-family:var(--mono);font-size:.7rem;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;margin-bottom:.6rem}
+.pipeline-step .step-title{font-weight:500;font-size:.98rem;margin-bottom:.4rem}
+.pipeline-step .step-desc{font-size:.82rem;color:var(--text-secondary);line-height:1.6}
+.pipeline-step .step-arrow{width:48px;display:flex;flex-direction:column;align-items:center;padding-top:1.8rem;gap:.3rem;flex-shrink:0}
+.pipeline-step .step-arrow span{font-family:var(--mono);font-size:.65rem;color:var(--text-dim)}
+.pipeline-step .step-line{flex:1;width:1px;background:linear-gradient(to bottom,rgba(27,108,168,.2),rgba(45,173,124,.2));min-height:40px}
+.step-divider{width:1px;background:linear-gradient(to bottom,var(--accent),var(--accent-2));margin:.5rem auto;height:40px}
+@media(max-width:700px){
+  .pipeline-step{grid-template-columns:1fr}
+  .pipeline-step .step-arrow{display:none}
+}
+
+/* Features grid */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem;margin-top:2.5rem}
+.feature-card{background:var(--bg-card);border-radius:14px;padding:1.8rem;border:1px solid rgba(27,108,168,.08);box-shadow:var(--shadow-sm);transition:transform .2s,box-shadow .2s}
+.feature-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.feature-card h4{font-size:.95rem;font-weight:500;margin-bottom:.6rem;color:var(--text-primary)}
+.feature-card p{font-size:.82rem;color:var(--text-secondary);line-height:1.6}
+.feature-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1rem;font-size:1.3rem}
+.feature-icon.blue{background:var(--accent-light);color:var(--accent)}
+.feature-icon.green{background:var(--accent-2-light);color:var(--accent-2)}
+.feature-icon.orange{background:rgba(232,140,48,.12);color:var(--accent-warn)}
+
+/* Footer */
+footer{padding:3rem clamp(1.5rem,5vw,4rem);border-top:1px solid rgba(27,108,168,.07);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;max-width:var(--wide-w);margin:0 auto}
+footer p{font-size:.78rem;color:var(--text-dim)}
+footer a{color:var(--accent);text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+/* Animations */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(18px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.fade-in{animation:fadeUp .6s ease-out forwards}
+</style>
+</head>
+<body>
+<div class="scroll-progress"></div>
+
+<script>
+window.addEventListener('scroll',()=>{
+  const scrollTop=document.documentElement.scrollTop;
+  const scrollHeight=document.documentElement.scrollHeight-document.documentElement.clientHeight;
+  document.querySelector('.scroll-progress').style.width=(scrollTop/scrollHeight*100)+'%';
+});
+</script>
+
+<!-- Navigation -->
+<nav>
+  <a href="#" class="nav-brand">AbDev</a>
+  <ul class="nav-links">
+    <li><a href="#evaluate">Evaluate</a></li>
+    <li><a href="#how-it-works">How It Works</a></li>
+    <li><a href="#metrics">Metrics</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-label">Antibody Developability Assessment</div>
+    <h1 class="hero-title">Predict <em>Therapeutic</em> Antibody Quality</h1>
+    <p class="hero-sub">AI-powered developability prediction for antibody engineering. Get comprehensive TAP scores, liability detection, and benchmark comparison in seconds — no wet lab required.</p>
+    <div class="hero-stats">
+      <div class="stat-card">
+        <div class="stat-num green">TAP</div>
+        <div class="stat-label">Developability Score</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">7</div>
+        <div class="stat-label">Liability Classes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num orange">5</div>
+        <div class="stat-label">Benchmark Datasets</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">&lt;30s</div>
+        <div class="stat-label">Prediction Time</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Evaluation Form -->
+<section class="input-section" id="evaluate">
+  <div class="input-inner">
+    <div class="section-label" style="text-align:center;margin-bottom:2rem">01 — Evaluate Your Antibody</div>
+    <h2 class="section-title" style="text-align:center;font-size:clamp(1.6rem,3.5vw,2.2rem);margin-bottom:.6rem">Submit an Antibody Sequence</h2>
+    <p class="section-sub" style="text-align:center;margin-bottom:2.5rem">Paste your antibody sequence (VH or VL chain) below. Our model evaluates developability across multiple dimensions.</p>
+    
+    <div class="form-card">
+      <form id="evalForm">
+        <div class="form-group">
+          <label for="name">Antibody Name / ID</label>
+          <input type="text" id="name" name="name" placeholder="e.g., mAb-001, anti-HER2-v12" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="heavy-chain">Heavy Chain (VH) — Optional</label>
+            <textarea id="heavy-chain" name="heavy_chain" placeholder="QVQLVQSGAEVKKPGSSVKVSCKASGYTFT..."></textarea>
+            <div class="form-hint">Leave empty if submitting VL only</div>
+          </div>
+          <div class="form-group">
+            <label for="light-chain">Light Chain (VL) — Optional</label>
+            <textarea id="light-chain" name="light_chain" placeholder="DIVMTQSPLSLPVTLGQPASISCRSSQSL..."></textarea>
+            <div class="form-hint">Leave empty if submitting VH only</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="sequence">Full Antibody Sequence (Required)</label>
+          <textarea id="sequence" name="sequence" placeholder="QVQLVQSGAEVKKPGSSVKVSCKASGYTFTNYWIXQGVRQAPGQGLKWM..." style="min-height:180px" required></textarea>
+          <div class="form-hint">Single-chain format: VH followed by (G4S)₃ linker then VL, or individual chain(s) above</div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Evaluate Developability
+        </button>
+        <div class="error-message" id="errorMsg"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Analyzing antibody sequence...</div>
+  <div class="loading-progress" id="loadingProgress">Initializing model</div>
+</div>
+
+<!-- Results Section -->
+<section class="results-section" id="resultsSection">
+  <div class="results-header">
+    <div class="section-label">02 — Results</div>
+    <h2>Developability Assessment</h2>
+    <p id="resultsName">Antibody analysis complete. Below is the comprehensive TAP scorecard and liability report.</p>
+  </div>
+
+  <!-- Score Gauge -->
+  <div class="score-gauge-wrapper">
+    <div class="gauge-container">
+      <svg class="gauge-svg" width="220" height="220" viewBox="0 0 220 220">
+        <circle class="gauge-bg" cx="110" cy="110" r="94"/>
+        <circle class="gauge-fill" id="gaugeFill" cx="110" cy="110" r="94" stroke-dasharray="590.6" stroke-dashoffset="590.6"/>
+      </svg>
+      <div class="gauge-center">
+        <div class="gauge-score" id="gaugeScore">—</div>
+        <div class="gauge-label">TAP Score</div>
+        <div class="gauge-sublabel" id="gaugeSublabel">Awaiting analysis</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAP Metrics -->
+  <div class="section-label" style="margin-bottom:1rem">03 — TAP Component Scores</div>
+  <div class="tap-grid">
+    <div class="tap-card">
+      <div class="tap-icon blue">🌡️</div>
+      <div class="tap-value" id="tapThermostability">—</div>
+      <div class="tap-label">Thermostability</div>
+      <div class="tap-desc">Thermal stability prediction based on sequence features and structure propensity</div>
+    </div>
+    <div class="tap-card">
+      <div class="tap-icon green">💧</div>
+      <div class="tap-value" id="tapSolubility">—</div>
+      <div class="tap-label">Solubility</div>
+      <div class="tap-desc">Expression-soluble yield prediction in mammalian expression systems</div>
+    </div>
+    <div class="tap-card">
+      <div class="tap-icon orange">⚗️</div>
+      <div class="tap-value" id="tapExpressibility">—</div>
+      <div class="tap-label">Expressibility</div>
+      <div class="tap-desc">CHO cell expression level prediction from sequence determinants</div>
+    </div>
+    <div class="tap-card">
+      <div class="tap-icon red">🧬</div>
+      <div class="tap-value" id="tapImmunogenicity">—</div>
+      <div class="tap-label">Low Immunogenicity</div>
+      <div class="tap-desc">T-cell epitope and human-homology based immunogenicity risk</div>
+    </div>
+  </div>
+
+  <!-- Liability Table -->
+  <div class="table-container">
+    <div class="table-header">
+      <h3>Developability Liabilities</h3>
+      <span class="badge badge-red" id="liabilityCount">0 issues</span>
+    </div>
+    <table id="liabilityTable">
+      <thead>
+        <tr>
+          <th>Liability Type</th>
+          <th>Severity</th>
+          <th>Position</th>
+          <th>Description</th>
+          <th>Recommendation</th>
+        </tr>
+      </thead>
+      <tbody id="liabilityBody">
+        <tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:2rem">No liabilities detected — sequence appears clean</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Benchmark Comparison -->
+  <div class="section-label" style="margin-bottom:1rem;margin-top:3rem">04 — Benchmark Comparison</div>
+  <p class="section-sub" style="margin-bottom:1.5rem">How this antibody compares to therapeutic antibody benchmarks across key developability metrics.</p>
+  <div class="benchmark-grid" id="benchmarkGrid">
+    <div class="benchmark-card">
+      <div class="bench-name">Similarity to Therapeutics</div>
+      <div class="bench-value" id="benchTherapeutic">—<span class="unit">%</span></div>
+      <div class="bench-sub">Sequential similarity to approved therapeutic antibodies</div>
+      <div class="bench-bar"><div class="bench-bar-fill" id="benchTherapeuticBar" style="width:0%"></div></div>
+    </div>
+    <div class="benchmark-card">
+      <div class="bench-name">Aggregation Risk</div>
+      <div class="bench-value" id="benchAggregation">—<span class="unit">/10</span></div>
+      <div class="bench-sub">Predicted aggregation propensity (lower = better)</div>
+      <div class="bench-bar"><div class="bench-bar-fill" id="benchAggregationBar" style="width:0%"></div></div>
+    </div>
+    <div class="benchmark-card">
+      <div class="bench-name">Viscosity Index</div>
+      <div class="bench-value" id="benchViscosity">—<span class="unit">mPa·s</span></div>
+      <div class="bench-sub">Estimated solution viscosity at 100 mg/mL</div>
+      <div class="bench-bar"><div class="bench-bar-fill" id="benchViscosityBar" style="width:0%"></div></div>
+    </div>
+    <div class="benchmark-card">
+      <div class="bench-name">PK Compliance</div>
+      <div class="bench-value" id="benchPK">—<span class="unit">%</span></div>
+      <div class="bench-sub">Matches pharmacokinetic properties of clinical-stage antibodies</div>
+      <div class="bench-bar"><div class="bench-bar-fill" id="benchPKBar" style="width:0%"></div></div>
+    </div>
+    <div class="benchmark-card">
+      <div class="bench-name">Isoelectric Point</div>
+      <div class="bench-value" id="benchPI">—<span class="unit"></span></div>
+      <div class="bench-sub">Predicted pI compared to typical therapeutic range (6.5–8.5)</div>
+      <div class="bench-bar"><div class="bench-bar-fill" id="benchPIBar" style="width:0%"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="section" id="how-it-works" style="background:var(--bg-surface);border-top:1px solid rgba(27,108,168,.06);border-bottom:1px solid rgba(27,108,168,.06);">
+  <div class="section-label">05 — How It Works</div>
+  <h2 class="section-title">The Developability Pipeline</h2>
+  <p class="section-sub">AbDev combines multi-task deep learning with large-scale therapeutic antibody benchmarking to provide actionable developability predictions.</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div></div>
+      <div class="step-arrow"><div class="step-line"></div><span>1</span><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-num">Step 01</div>
+        <div class="step-title">Sequence Input & Preprocessing</div>
+        <div class="step-desc">Accepts VH, VL, or single-chain scFv formats. Sequences are validated, padded/truncated to 650 AA max, and tokenized using the 20-amino-acid vocabulary plus special tokens.</div>
+      </div>
+    </div>
+
+    <div class="step-divider"></div>
+
+    <div class="pipeline-step">
+      <div></div>
+      <div class="step-arrow"><div class="step-line"></div><span>2</span><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-num">Step 02</div>
+        <div class="step-title">Multi-Task Transformer Encoding</div>
+        <div class="step-desc">A 12-layer transformer encoder processes the sequence through shared ESM-2-style attention, producing per-residue embeddings used across all prediction heads.</div>
+      </div>
+    </div>
+
+    <div class="step-divider"></div>
+
+    <div class="pipeline-step">
+      <div></div>
+      <div class="step-arrow"><div class="step-line"></div><span>3</span><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-num">Step 03</div>
+        <div class="step-title">TAP Score Regression</div>
+        <div class="step-desc">Four regression heads predict thermostability, solubility, expressibility, and low immunogenicity scores (0–100). Scores are aggregated into a weighted composite TAP score.</div>
+      </div>
+    </div>
+
+    <div class="step-divider"></div>
+
+    <div class="pipeline-step">
+      <div></div>
+      <div class="step-arrow"><div class="step-line"></div><span>4</span><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-num">Step 04</div>
+        <div class="step-title">Liability Classification</div>
+        <div class="step-desc">A multi-label classifier scans for 7 developability liability types: aggregation hotspots, glycosylation sites, deamidation motifs, oxidation sites, isomerization regions, protease cleavage sites, and charged patches.</div>
+      </div>
+    </div>
+
+    <div class="step-divider"></div>
+
+    <div class="pipeline-step">
+      <div></div>
+      <div class="step-arrow"><div class="step-line"></div><span>5</span><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-num">Step 05</div>
+        <div class="step-title">Benchmark Comparison</div>
+        <div class="step-desc">Final scores are compared against a database of 1,200+ therapeutic antibodies (approved + clinical-stage) to rank the candidate and provide context-specific recommendations.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon blue">🔬</div>
+      <h4>Physics-Informed Features</h4>
+      <p>Sequence embeddings augmented with computed properties: hydrophobicity, charge, isoelectric point, and CDR canonical structures.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon green">📊</div>
+      <h4>Therapeutic Benchmark</h4>
+      <p>Trained and evaluated against a curated set of 1,200+ approved and clinical-stage therapeutic antibodies with known developability profiles.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon orange">⚡</div>
+      <h4>Fast Inference</h4>
+      <p>Optimized single-sequence inference completes in under 30 seconds. Batch processing available for up to 100 sequences per request.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Metrics Reference -->
+<section class="section" id="metrics">
+  <div class="section-label">06 — Metrics Reference</div>
+  <h2 class="section-title">Understanding TAP Scores</h2>
+  <p class="section-sub">TAP (Therapeutic Antibody Predictability) scores are composite developability metrics ranging from 0–100. Higher scores indicate better predicted developability.</p>
+
+  <div class="table-container" style="margin-top:2rem">
+    <table>
+      <thead>
+        <tr>
+          <th>Score Range</th>
+          <th>Rating</th>
+          <th>Interpretation</th>
+          <th>Typical Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>80–100</strong></td>
+          <td><span class="badge badge-green">Excellent</span></td>
+          <td>Highly developable; similar to approved therapeutics</td>
+          <td>Proceed to CMC with confidence</td>
+        </tr>
+        <tr>
+          <td><strong>60–79</strong></td>
+          <td><span class="badge badge-blue">Good</span></td>
+          <td>Developable with standard developability panel</td>
+          <td>Continue optimization; minor risks addressable</td>
+        </tr>
+        <tr>
+          <td><strong>40–59</strong></td>
+          <td><span class="badge badge-orange">Moderate</span></td>
+          <td>Moderate developability; specific liabilities identified</td>
+          <td>Engineering required; re-evaluate after mutation</td>
+        </tr>
+        <tr>
+          <td><strong>&lt;40</strong></td>
+          <td><span class="badge badge-red">High Risk</span></td>
+          <td>Significant developability concerns; likely to fail</td>
+          <td>Re-design or select alternative clone</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:2.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.2rem">
+    <div style="background:var(--bg-card);border-radius:14px;padding:1.5rem;border:1px solid rgba(27,108,168,.08);">
+      <h4 style="font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:.8rem">Liability Types Detected</h4>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:.4rem;font-size:.82rem;color:var(--text-secondary)">
+        <li>→ Aggregation hotspots (hydrophobic patches)</li>
+        <li>→ N-linked glycosylation sites ( Asn-X-Ser/Thr )</li>
+        <li>→ Deamidation motifs ( Asn-Gly, Asn-Ser )</li>
+        <li>→ Oxidation-sensitive residues ( Met, Trp, Cys )</li>
+        <li>→ Isomerization sites ( Asp-Gly sequences )</li>
+        <li>→ Protease cleavage motifs ( dibasic, cathepsin )</li>
+        <li>→ Extreme charged patches (|ΔpI| > 2.0)</li>
+      </ul>
+    </div>
+    <div style="background:var(--bg-card);border-radius:14px;padding:1.5rem;border:1px solid rgba(27,108,168,.08);">
+      <h4 style="font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:.8rem">Benchmark Datasets</h4>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:.4rem;font-size:.82rem;color:var(--text-secondary)">
+        <li>→ 430 FDA-approved therapeutic antibodies</li>
+        <li>→ 780 clinical-stage candidates (Phase I–III)</li>
+        <li>→ 12,000+ recombinant mAb expressions</li>
+        <li>→ 3,500 aggregation assay measurements</li>
+        <li>→ 1,200 viscosity measurements at high concentration</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>AbDev — Therapeutic Antibody Developability Assessment &copy; 2026</p>
+  <p>Built with ESM-2 embeddings &middot; Trained on 1,200+ therapeutic antibodies</p>
+</footer>
+
+<script>
+// Form submission
+document.getElementById('evalForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const submitBtn = document.getElementById('submitBtn');
+  const errorMsg = document.getElementById('errorMsg');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  const resultsSection = document.getElementById('resultsSection');
+  
+  // Get form data
+  const sequence = document.getElementById('sequence').value.trim();
+  const name = document.getElementById('name').value.trim();
+  const heavyChain = document.getElementById('heavy-chain').value.trim();
+  const lightChain = document.getElementById('light-chain').value.trim();
+  
+  // Validation
+  if (!sequence && !heavyChain && !lightChain) {
+    showError('Please provide at least one sequence (full sequence, heavy chain, or light chain).');
+    return;
+  }
+  
+  // Clear previous results
+  errorMsg.classList.remove('visible');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Analyzing...';
+  loadingOverlay.classList.add('visible');
+  resultsSection.classList.remove('visible');
+  
+  const progressEl = document.getElementById('loadingProgress');
+  const progressSteps = [
+    'Initializing model',
+    'Encoding sequence',
+    'Computing embeddings',
+    'Running TAP regression',
+    'Scanning liabilities',
+    'Comparing benchmarks',
+    'Finalizing results'
+  ];
+  let progressIdx = 0;
+  const progressInterval = setInterval(() => {
+    if (progressIdx < progressSteps.length) {
+      progressEl.textContent = progressSteps[progressIdx++];
+    }
+  }, 800);
+  
+  try {
+    const payload = { sequence, name };
+    if (heavyChain) payload.heavy_chain = heavyChain;
+    if (lightChain) payload.light_chain = lightChain;
+    
+    const response = await fetch('/api/evaluate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    
+    clearInterval(progressInterval);
+    
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Evaluation failed. Please check your sequence and try again.');
+    }
+    
+    // Display results
+    displayResults(data.results, name);
+    
+    loadingOverlay.classList.remove('visible');
+    resultsSection.classList.add('visible');
+    
+    // Scroll to results
+    setTimeout(() => {
+      resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    
+  } catch (err) {
+    clearInterval(progressInterval);
+    showError(err.message);
+    loadingOverlay.classList.remove('visible');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Evaluate Developability';
+  }
+});
+
+function showError(msg) {
+  const errorMsg = document.getElementById('errorMsg');
+  errorMsg.textContent = msg;
+  errorMsg.classList.add('visible');
+}
+
+function displayResults(results, name) {
+  document.getElementById('resultsName').textContent = `Developability analysis for ${name || 'antibody'} complete.`;
+  
+  // TAP Score Gauge
+  const tapScore = results.tap_score || 0;
+  const gaugeFill = document.getElementById('gaugeFill');
+  const gaugeScore = document.getElementById('gaugeScore');
+  const gaugeSublabel = document.getElementById('gaugeSublabel');
+  
+  gaugeScore.textContent = tapScore.toFixed(1);
+  
+  // Set gauge color based on score
+  let gaugeColor, sublabel;
+  if (tapScore >= 80) {
+    gaugeColor = 'var(--accent-2)';
+    sublabel = 'Excellent — Highly developable';
+  } else if (tapScore >= 60) {
+    gaugeColor = 'var(--accent)';
+    sublabel = 'Good — Minor concerns addressable';
+  } else if (tapScore >= 40) {
+    gaugeColor = 'var(--accent-warn)';
+    sublabel = 'Moderate — Engineering recommended';
+  } else {
+    gaugeColor = 'var(--accent-danger)';
+    sublabel = 'High Risk — Significant liabilities';
+  }
+  
+  gaugeFill.style.stroke = gaugeColor;
+  gaugeSublabel.textContent = sublabel;
+  
+  // Animate gauge
+  const circumference = 2 * Math.PI * 94; // 590.6
+  const offset = circumference - (tapScore / 100) * circumference;
+  setTimeout(() => {
+    gaugeFill.style.strokeDashoffset = offset;
+  }, 200);
+  
+  // TAP Components
+  const components = results.tap_components || {};
+  setTapValue('tapThermostability', components.thermostability);
+  setTapValue('tapSolubility', components.solubility);
+  setTapValue('tapExpressibility', components.expressibility);
+  setTapValue('tapImmunogenicity', components.immunogenicity);
+  
+  // Liabilities
+  const liabilities = results.liabilities || [];
+  const liabilityBody = document.getElementById('liabilityBody');
+  const liabilityCount = document.getElementById('liabilityCount');
+  
+  liabilityCount.textContent = liabilities.length === 0 ? 'No issues' : `${liabilities.length} issue${liabilities.length > 1 ? 's' : ''}`;
+  liabilityCount.className = 'badge ' + (liabilities.length === 0 ? 'badge-green' : liabilities.length <= 2 ? 'badge-orange' : 'badge-red');
+  
+  if (liabilities.length === 0) {
+    liabilityBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-dim);padding:2rem">No liabilities detected — sequence appears clean</td></tr>';
+  } else {
+    liabilityBody.innerHTML = liabilities.map(liability => `
+      <tr>
+        <td><strong>${liability.type || 'Unknown'}</strong></td>
+        <td><span class="liability-severity ${liability.severity || 'low'}">${(liability.severity || 'low').toUpperCase()}</span></td>
+        <td><span class="seq-display">${liability.position || 'N/A'}</span></td>
+        <td style="color:var(--text-secondary)">${liability.description || ''}</td>
+        <td style="color:var(--text-secondary);font-size:.8rem">${liability.recommendation || 'Monitor'}</td>
+      </tr>
+    `).join('');
+  }
+  
+  // Benchmarks
+  const benchmarks = results.benchmarks || {};
+  setBenchmark('benchTherapeutic', benchmarks.therapeutic_similarity, '%', 100);
+  setBenchmark('benchAggregation', benchmarks.aggregation_risk, '/10', 10, true);
+  setBenchmark('benchViscosity', benchmarks.viscosity, ' mPa·s', 100);
+  setBenchmark('benchPK', benchmarks.pk_compliance, '%', 100);
+  setBenchmark('benchPI', benchmarks.isoelectric_point, '', 14);
+  
+  // Animate benchmark bars
+  setTimeout(() => {
+    animateBenchmarkBar('benchTherapeuticBar', benchmarks.therapeutic_similarity || 0, 100);
+    animateBenchmarkBar('benchAggregationBar', 10 - (benchmarks.aggregation_risk || 0), 10); // invert: lower is better
+    animateBenchmarkBar('benchViscosityBar', 100 - (benchmarks.viscosity || 0), 100); // invert
+    animateBenchmarkBar('benchPKBar', benchmarks.pk_compliance || 0, 100);
+    animateBenchmarkBar('benchPIBar', benchmarks.isoelectric_point || 7, 14);
+  }, 300);
+}
+
+function setTapValue(id, value) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.textContent = value != null ? value.toFixed(1) : '—';
+    el.className = 'tap-value';
+    if (value >= 80) el.classList.add('good');
+    else if (value >= 50) el.classList.add('warn');
+    else if (value != null) el.classList.add('bad');
+  }
+}
+
+function setBenchmark(id, value, unit, max, invert = false) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.innerHTML = (value != null ? value.toFixed(1) : '—') + `<span class="unit">${unit}</span>`;
+  }
+}
+
+function animateBenchmarkBar(id, value, max) {
+  const bar = document.getElementById(id);
+  if (bar) {
+    const pct = Math.min(100, Math.max(0, (value / max) * 100));
+    bar.style.width = pct + '%';
+  }
+}
+
+// Sequence validation hint
+document.getElementById('sequence').addEventListener('input', function() {
+  const seq = this.value.trim().toUpperCase();
+  const validAA = /^[ACDEFGHIKLMNPQRSTVWY\s\n]+$/;
+  const hint = this.closest('.form-group').querySelector('.form-hint');
+  
+  if (seq.length > 0 && !validAA.test(seq.replace(/\s/g, '').replace(/\n/g, ''))) {
+    hint.textContent = '⚠️ Invalid characters detected — only standard amino acids allowed (A, C, D, E, F, G, H, I, K, L, M, N, P, Q, R, S, T, V, W, Y)';
+    hint.style.color = 'var(--accent-danger)';
+  } else if (seq.length > 0) {
+    hint.textContent = `${seq.replace(/\s/g, '').replace(/\n/g, '').length} residues entered`;
+    hint.style.color = 'var(--text-dim)';
+  } else {
+    hint.textContent = 'Single-chain format: VH followed by (G4S)₃ linker then VL, or individual chain(s) above';
+    hint.style.color = 'var(--text-dim)';
+  }
+});
+</script>
+
+</body>
+</html>
